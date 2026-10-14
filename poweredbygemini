@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>材料破壞理論與莫耳圓分析工具</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --border: #e2e8f0;
+      --primary: #2563eb;
+      --safe: #16a34a;
+      --fail: #dc2626;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1.5rem;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: var(--card);
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 1.5rem;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .subtitle {
+      font-size: 0.875rem;
+      color: var(--muted);
+      font-weight: normal;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .section-title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 0.75rem;
+      color: var(--muted);
+    }
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .input-group {
+      margin-bottom: 0.5rem;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 0.25rem;
+      color: var(--text);
+    }
+    input[type="number"] {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+    input[type="number"]:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    }
+    .principal-box {
+      background: #f1f5f9;
+      padding: 0.9rem 1.2rem;
+      border-radius: 8px;
+      margin: 1rem 0 1.5rem 0;
+      display: flex;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      font-size: 0.95rem;
+    }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+    .chart-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      background: #ffffff;
+    }
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .chart-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+    .legend {
+      display: flex;
+      gap: 0.75rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .swatch {
+      width: 12px;
+      height: 3px;
+      display: inline-block;
+      border-radius: 2px;
+    }
+    canvas {
+      width: 100%;
+      height: 360px;
+      display: block;
+      background: #fcfcfd;
+      border-radius: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background-color: #f1f5f9;
+      color: var(--muted);
+    }
+    .badge {
+      padding: 0.25rem 0.65rem;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: white;
+      display: inline-block;
+    }
+    .safe { background-color: var(--safe); }
+    .fail { background-color: var(--fail); }
+    @media (max-width: 600px) {
+      .input-row { grid-template-columns: 1fr; }
+      .charts-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>
+    <span>2D 元素破壞理論與莫耳圓分析工具</span>
+    <span class="subtitle">輸入數值即時更新圖表與安全係數</span>
+  </h1>
+
+  <div class="grid">
+    <div>
+      <div class="section-title">平面應力狀態 Applied Plane Stress (MPa)</div>
+      <div class="input-row">
+        <div class="input-group">
+          <label for="sx">正向應力 &sigma;<sub>x</sub></label>
+          <input type="number" id="sx" value="120" step="5">
+        </div>
+        <div class="input-group">
+          <label for="sy">正向應力 &sigma;<sub>y</sub></label>
+          <input type="number" id="sy" value="-50" step="5">
+        </div>
+        <div class="input-group">
+          <label for="txy">剪應力 &tau;<sub>xy</sub></label>
+          <input type="number" id="txy" value="60" step="5">
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">材料強度參數 Material Strength (MPa)</div>
+      <div class="input-row">
+        <div class="input-group">
+          <label for="syield">降伏強度 S<sub>y</sub></label>
+          <input type="number" id="syield" value="250" min="1" step="10">
+        </div>
+        <div class="input-group">
+          <label for="sut">極限抗拉 S<sub>ut</sub></label>
+          <input type="number" id="sut" value="220" min="1" step="10">
+        </div>
+        <div class="input-group">
+          <label for="suc">極限抗壓 S<sub>uc</sub></label>
+          <input type="number" id="suc" value="600" min="1" step="10">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="principal-box">
+    <div><strong>平面主應力 &sigma;<sub>A</sub>:</strong> <span id="sA_val">0</span> MPa</div>
+    <div><strong>平面主應力 &sigma;<sub>B</sub>:</strong> <span id="sB_val">0</span> MPa</div>
+    <div><strong>3D 排序 (&sigma;<sub>1</sub>, &sigma;<sub>2</sub>, &sigma;<sub>3</sub>):</strong> (<span id="s123_val">0, 0, 0</span>) MPa</div>
+    <div><strong>最大剪應力 &tau;<sub>max (3D)</sub>:</strong> <span id="tmax_val">0</span> MPa</div>
+  </div>
+
+  <div class="charts-grid">
+    <!-- 莫耳圓圖 -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">3D 莫耳圓 (Mohr's Circle)</span>
+        <div class="legend">
+          <span class="legend-item"><span class="swatch" style="background:#2563eb;"></span>平面主圓 (&sigma;<sub>A</sub>, &sigma;<sub>B</sub>)</span>
+          <span class="legend-item"><span class="swatch" style="background:#94a3b8;"></span>3D 副圓</span>
+          <span class="legend-item"><span class="swatch" style="background:#f59e0b;"></span>狀態線 X-Y</span>
+        </div>
+      </div>
+      <canvas id="mohrCanvas"></canvas>
+    </div>
+
+    <!-- 破壞包絡線圖 -->
+    <div class="chart-card">
+      <div class="chart-header">
+        <span class="chart-title">破壞包絡線 (&sigma;<sub>A</sub> - &sigma;<sub>B</sub> Plane)</span>
+        <div class="legend">
+          <span class="legend-item"><span class="swatch" style="background:#2563eb;"></span>Von Mises</span>
+          <span class="legend-item"><span class="swatch" style="background:#dc2626;"></span>Tresca</span>
+          <span class="legend-item"><span class="swatch" style="background:#16a34a;"></span>Coulomb-Mohr</span>
+        </div>
+      </div>
+      <canvas id="envelopeCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="section-title">各破壞理論評估結果 (Failure Theories Evaluation)</div>
+  <table>
+    <thead>
+      <tr>
+        <th>破壞理論 (Failure Theory)</th>
+        <th>適用材料</th>
+        <th>等效應力 (MPa)</th>
+        <th>安全係數 (FoS)</th>
+        <th>判定結果</th>
+      </tr>
+    </thead>
+    <tbody id="theory-body"></tbody>
+  </table>
+</div>
+
+<script>
+  function setupCanvas(canvas) {
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return { ctx, width: rect.width, height: rect.height };
+  }
+
+  function drawMohrCircle(sx, sy, txy, sA, sB, s1, s2, s3) {
+    const canvas = document.getElementById('mohrCanvas');
+    const { ctx, width, height } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, width, height);
+
+    const center_x = (s1 + s3) / 2;
+    const max_R = Math.max((s1 - s3) / 2, 10);
+    const maxExtent = Math.max(Math.abs(s1), Math.abs(s3), max_R) * 1.35 + 15;
+
+    const cx = width / 2;
+    const cy = height / 2;
+    const scale = Math.min(width, height) / (2 * maxExtent);
+
+    const toX = (sigma) => cx + sigma * scale;
+    const toY = (tau) => cy - tau * scale;
+
+    // 繪製座標軸
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(15, cy); ctx.lineTo(width - 15, cy);
+    ctx.moveTo(cx, 15); ctx.lineTo(cx, height - 15);
+    ctx.stroke();
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('σ (MPa)', width - 58, cy - 6);
+    ctx.fillText('τ (MPa)', cx + 6, 24);
+
+    // 繪製 3D 莫耳圓陰影區域 (代表所有可能平面之應力範圍)
+    const c13_x = toX((s1 + s3) / 2), r13 = ((s1 - s3) / 2) * scale;
+    const c12_x = toX((s1 + s2) / 2), r12 = ((s1 - s2) / 2) * scale;
+    const c23_x = toX((s2 + s3) / 2), r23 = ((s2 - s3) / 2) * scale;
+
+    ctx.fillStyle = 'rgba(37, 99, 235, 0.06)';
+    ctx.beginPath();
+    ctx.arc(c13_x, cy, r13, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#fcfcfd';
+    ctx.beginPath();
+    ctx.arc(c12_x, cy, r12, 0, Math.PI * 2);
+    ctx.arc(c23_x, cy, r23, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 繪製三個圓的外框
+    const drawCircle = (centerSigma, radiusSigma, color, dashed = false, lineWidth = 1.5) => {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      if (dashed) ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.arc(toX(centerSigma), cy, radiusSigma * scale, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    drawCircle((s1 + s3) / 2, (s1 - s3) / 2, '#94a3b8', true, 1.5);
+    drawCircle((s1 + s2) / 2, (s1 - s2) / 2, '#94a3b8', true, 1.5);
+    drawCircle((s2 + s3) / 2, (s2 - s3) / 2, '#94a3b8', true, 1.5);
+
+    // 強調顯示平面應力主圓 (sA, sB)
+    drawCircle((sA + sB) / 2, Math.abs(sA - sB) / 2, '#2563eb', false, 2.2);
+
+    // 繪製 X(sx, txy) 與 Y(sy, -txy) 連線
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(toX(sx), toY(txy));
+    ctx.lineTo(toX(sy), toY(-txy));
+    ctx.stroke();
+
+    // 標記特徵點
+    const plotPoint = (s, t, label, color = '#0f172a', offsetY = -8) => {
+      const px = toX(s), py = toY(t);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = '11px sans-serif';
+      ctx.fillText(label, px + 5, py + offsetY);
+    };
+
+    plotPoint(sx, txy, `X(${sx}, ${txy})`, '#d97706', -6);
+    plotPoint(sy, -txy, `Y(${sy}, ${-txy})`, '#d97706', 14);
+    plotPoint(s1, 0, `σ₁=${s1.toFixed(0)}`, '#1e293b', -8);
+    plotPoint(s3, 0, `σ₃=${s3.toFixed(0)}`, '#1e293b', 15);
+    plotPoint((s1 + s3) / 2, (s1 - s3) / 2, `τmax=${((s1 - s3) / 2).toFixed(1)}`, '#2563eb', -8);
+  }
+
+  function drawFailureEnvelope(sA, sB, Sy, Sut, Suc) {
+    const canvas = document.getElementById('envelopeCanvas');
+    const { ctx, width, height } = setupCanvas(canvas);
+    ctx.clearRect(0, 0, width, height);
+
+    const maxBound = Math.max(Sy, Sut, Suc, Math.abs(sA), Math.abs(sB), 10) * 1.25;
+    const cx = width / 2;
+    const cy = height / 2;
+    const scale = Math.min(width, height) / (2 * maxBound);
+
+    const toX = (s) => cx + s * scale;
+    const toY = (s) => cy - s * scale;
+
+    // 繪製座標軸
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(15, cy); ctx.lineTo(width - 15, cy);
+    ctx.moveTo(cx, 15); ctx.lineTo(cx, height - 15);
+    ctx.stroke();
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('σA (MPa)', width - 62, cy - 6);
+    ctx.fillText('σB (MPa)', cx + 6, 24);
+
+    // 1. Brittle Coulomb-Mohr 六邊形 (綠虛線)
+    const cmPts = [
+      [Sut, 0], [Sut, Sut], [0, Sut],
+      [-Suc, 0], [-Suc, -Suc], [0, -Suc]
+    ];
+    ctx.save();
+    ctx.strokeStyle = '#16a34a';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    cmPts.forEach(([x, y], i) => {
+      if (i === 0) ctx.moveTo(toX(x), toY(y));
+      else ctx.lineTo(toX(x), toY(y));
+    });
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+
+    // 2. Von Mises 橢圓: sA^2 - sA*sB + sB^2 = Sy^2 (藍實線)
+    ctx.save();
+    ctx.strokeStyle = '#2563eb';
+    ctx.fillStyle = 'rgba(37, 99, 235, 0.05)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const steps = 120;
+    for (let i = 0; i <= steps; i++) {
+      const theta = (i / steps) * Math.PI * 2;
+      const x = Sy * (Math.cos(theta) - Math.sin(theta) / Math.sqrt(3));
+      const y = Sy * (Math.cos(theta) + Math.sin(theta) / Math.sqrt(3));
+      if (i === 0) ctx.moveTo(toX(x), toY(y));
+      else ctx.lineTo(toX(x), toY(y));
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. Tresca 六邊形 (紅虛線)
+    const trescaPts = [
+      [Sy, 0], [Sy, Sy], [0, Sy],
+      [-Sy, 0], [-Sy, -Sy], [0, -Sy]
+    ];
+    ctx.save();
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    trescaPts.forEach(([x, y], i) => {
+      if (i === 0) ctx.moveTo(toX(x), toY(y));
+      else ctx.lineTo(toX(x), toY(y));
+    });
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+
+    // 4. 繪製原點至當前應力點 (sA, sB) 的負載線 (Load Line)
+    ctx.save();
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([2, 2]);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(toX(sA), toY(sB));
+    ctx.stroke();
+    ctx.restore();
+
+    // 5. 標記當前應力點 P(sA, sB)
+    const isInsideVM = (sA * sA - sA * sB + sB * sB) <= Sy * Sy;
+    const ptColor = isInsideVM ? '#16a34a' : '#dc2626';
+    const px = toX(sA), py = toY(sB);
+
+    ctx.fillStyle = ptColor;
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(`P(${sA.toFixed(1)}, ${sB.toFixed(1)})`, px + 7, py - 7);
+  }
+
+  function calculateFailure() {
+    const sx = parseFloat(document.getElementById('sx').value) || 0;
+    const sy = parseFloat(document.getElementById('sy').value) || 0;
+    const txy = parseFloat(document.getElementById('txy').value) || 0;
+    const Sy = Math.max(parseFloat(document.getElementById('syield').value) || 1, 1);
+    const Sut = Math.max(parseFloat(document.getElementById('sut').value) || 1, 1);
+    const Suc = Math.max(Math.abs(parseFloat(document.getElementById('suc').value)) || 1, 1);
+
+    // 平面主應力 sA >= sB
+    const avg = (sx + sy) / 2;
+    const R = Math.sqrt(Math.pow((sx - sy) / 2, 2) + Math.pow(txy, 2));
+    const sA = avg + R;
+    const sB = avg - R;
+
+    // 3D 主應力排序 (包含 sz = 0)
+    const principals = [sA, sB, 0].sort((a, b) => b - a);
+    const [s1, s2, s3] = principals;
+    const tmax = (s1 - s3) / 2;
+
+    document.getElementById('sA_val').textContent = sA.toFixed(2);
+    document.getElementById('sB_val').textContent = sB.toFixed(2);
+    document.getElementById('s123_val').textContent = `${s1.toFixed(1)}, ${s2.toFixed(1)}, ${s3.toFixed(1)}`;
+    document.getElementById('tmax_val').textContent = tmax.toFixed(2);
+
+    // 1. Von Mises (畸變能理論)
+    const vonMisesStress = Math.sqrt(sA * sA - sA * sB + sB * sB);
+    const fosVonMises = vonMisesStress === 0 ? Infinity : Sy / vonMisesStress;
+
+    // 2. Tresca (最大剪應力理論)
+    const trescaStress = s1 - s3;
+    const fosTresca = trescaStress === 0 ? Infinity : Sy / trescaStress;
+
+    // 3. Rankine (最大正向應力理論)
+    let fosRankine = Infinity;
+    if (s1 > 0) fosRankine = Math.min(fosRankine, Sut / s1);
+    if (s3 < 0) fosRankine = Math.min(fosRankine, Suc / Math.abs(s3));
+    const rankineEff = Math.max(Math.abs(s1), Math.abs(s3));
+
+    // 4. Brittle Coulomb-Mohr (脆性庫倫-莫耳理論)
+    let cmInvFos = 0;
+    if (sA >= sB && sB >= 0) {
+      cmInvFos = sA / Sut;
+    } else if (sA >= 0 && 0 >= sB) {
+      cmInvFos = (sA / Sut) - (sB / Suc);
+    } else if (0 >= sA && sA >= sB) {
+      cmInvFos = -sB / Suc;
+    }
+    const fosCM = cmInvFos === 0 ? Infinity : 1 / cmInvFos;
+
+    const theories = [
+      { name: "Von Mises (畸變能理論)", type: "延性材料 (Ductile)", stress: vonMisesStress.toFixed(2), fos: fosVonMises },
+      { name: "Tresca (最大剪應力理論)", type: "延性材料 (Ductile)", stress: trescaStress.toFixed(2), fos: fosTresca },
+      { name: "Rankine (最大正向應力理論)", type: "脆性材料 (Brittle)", stress: rankineEff.toFixed(2), fos: fosRankine },
+      { name: "Brittle Coulomb-Mohr (庫倫-莫耳)", type: "脆性材料 (Brittle)", stress: "—", fos: fosCM }
+    ];
+
+    const tbody = document.getElementById('theory-body');
+    tbody.innerHTML = theories.map(t => {
+      const isSafe = t.fos >= 1.0;
+      const fosDisplay = isFinite(t.fos) ? t.fos.toFixed(2) : "∞";
+      return `
+        <tr>
+          <td><strong>${t.name}</strong></td>
+          <td>${t.type}</td>
+          <td>${t.stress}</td>
+          <td><strong>${fosDisplay}</strong></td>
+          <td><span class="badge ${isSafe ? 'safe' : 'fail'}">${isSafe ? 'SAFE (安全)' : 'FAILURE (破壞)'}</span></td>
+        </tr>
+      `;
+    }).join('');
+
+    // 繪製兩張圖表
+    drawMohrCircle(sx, sy, txy, sA, sB, s1, s2, s3);
+    drawFailureEnvelope(sA, sB, Sy, Sut, Suc);
+  }
+
+  // 綁定所有輸入框即時觸發更新與視窗縮放重繪
+  document.querySelectorAll('input').forEach(input => {
+    input.addEventListener('input', calculateFailure);
+  });
+  window.addEventListener('resize', calculateFailure);
+  window.addEventListener('DOMContentLoaded', calculateFailure);
+</script>
+
+</body>
+</html>
